@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess - Play Against AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .game-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .players-row {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .board-wrapper {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s;
+        }
+
+        .board-wrapper.small {
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .board-wrapper.medium {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .board-wrapper.large {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 0;
+            background: #2a2a2a;
+            aspect-ratio: 1/1;
+            border: 2px solid #1a1a1a;
+            position: relative;
+        }
+
+        .board.small .square {
+            font-size: 40px;
+        }
+
+        .board.medium .square {
+            font-size: 60px;
+        }
+
+        .board.large .square {
+            font-size: 80px;
+        }
+
+        .square {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            aspect-ratio: 1/1;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .square.light {
+            background-color: #f0d9b5;
+        }
+
+        .square.dark {
+            background-color: #b58863;
+        }
+
+        .square.valid-move {
+            box-shadow: inset 0 0 0 3px rgba(50, 200, 50, 0.6);
+        }
+
+        .square.selected {
+            background-color: #baca44 !important;
+            box-shadow: inset 0 0 0 2px #0a3a0a;
+        }
+
+        .square.last-move {
+            background-color: #cab23d !important;
+        }
+
+        .square.highlight {
+            background-color: #cab23d !important;
+        }
+
+        .piece {
+            cursor: grab;
+            -webkit-user-select: none;
+            user-select: none;
+            transition: transform 0.1s;
+            line-height: 1;
+            font-size: inherit;
+        }
+
+        .piece:active {
+            cursor: grabbing;
+        }
+
+        .board.small .piece {
+            font-size: 36px;
+        }
+
+        .board.medium .piece {
+            font-size: 56px;
+        }
+
+        .board.large .piece {
+            font-size: 76px;
+        }
+
+        .piece.dragging {
+            opacity: 0.5;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #1a1a1a;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: #fff;
+            gap: 30px;
+            min-width: 250px;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        .sub-label {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .sub-status {
+            color: #888;
+            font-size: 13px;
+        }
+
+        .piece-container {
+            margin-bottom: 15px;
+        }
+
+        .piece-heading {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .player-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #404040;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .status-bar {
+            text-align: center;
+            padding: 12px;
+            background: #2a2a2a;
+            border-radius: 6px;
+            color: #fff;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .status-bar.check {
+            background: #8b3a3a;
+            color: #ff6b6b;
+        }
+
+        .status-bar.checkmate {
+            background: #8b3a3a;
+            color: #ff6b6b;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            width: 100%;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .panel-section {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            min-width: 250px;
+            flex: 1;
+            max-width: 350px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .move-list {
+            display: grid;
+            grid-template-columns: auto 1fr 1fr;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .move-number {
+            color: #888;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .move-white, .move-black {
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            background: #2a2a2a;
+            color: #fff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .move-white:hover, .move-black:hover {
+            background: #404040;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .stat-label {
+            color: #888;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+
+        .btn {
+            padding: 12px;
+            background: #2a4a6a;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #3a5a7a;
+            transform: translateY(-2px);
+        }
+
+        .btn.primary {
+            background: #3a7a4a;
+        }
+
+        .btn.primary:hover {
+            background: #4a8a5a;
+        }
+
+        .btn:disabled {
+            background: #404040;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .elo-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .elo-btn {
+            padding: 8px 6px;
+            background: #2a4a6a;
+            color: #fff;
+            border: 2px solid #2a4a6a;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+
+        .elo-btn:hover {
+            background: #3a5a7a;
+        }
+
+        .elo-btn.active {
+            background: #3a7a4a;
+            border-color: #5aaa6a;
+        }
+
+        .size-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .size-btn {
+            flex: 1;
+            padding: 8px;
+            background: #2a4a6a;
+            color: #fff;
+            border: 2px solid #2a4a6a;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .size-btn:hover {
+            background: #3a5a7a;
+        }
+
+        .size-btn.active {
+            background: #3a7a4a;
+            border-color: #5aaa6a;
+        }
+
+        .analysis-panel {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 20px;
+            color: #fff;
+            margin-top: 20px;
+        }
+
+        .analysis-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e94560;
+            margin-bottom: 15px;
+        }
+
+        .analysis-content {
+            display: grid;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .analysis-item {
+            background: #2a2a2a;
+            padding: 12px;
+            border-radius: 4px;
+            border-left: 3px solid #2a4a6a;
+        }
+
+        .analysis-item.excellent {
+            border-left-color: #2aaa2a;
+        }
+
+        .analysis-item.good {
+            border-left-color: #4a7aaa;
+        }
+
+        .analysis-item.average {
+            border-left-color: #aaa42a;
+        }
+
+        .analysis-item.poor {
+            border-left-color: #aa4a2a;
+        }
+
+        .analysis-label {
+            color: #888;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .analysis-value {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .captured-pieces {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .captured-piece {
+            font-size: 20px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #505050;
+        }
+
+        @media (max-width: 1200px) {
+            .panel-section {
+                min-width: 200px;
+                max-width: 300px;
+                flex: 0 1 auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 10px;
+            }
+
+            .square {
+                font-size: 40px;
+            }
+
+            .piece {
+                font-size: 40px;
+            }
+
+            .right-panel {
+                flex-direction: column;
+            }
+        }
+
+        /* Mistake Analysis Styles */
+        .mistake-item {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 4px solid;
+        }
+
+        .mistake-item.blunder {
+            border-left-color: #ff4444;
+            background: linear-gradient(135deg, #331111 0%, #2a2a2a 100%);
+        }
+
+        .mistake-item.mistake {
+            border-left-color: #ffaa44;
+            background: linear-gradient(135deg, #332211 0%, #2a2a2a 100%);
+        }
+
+        .mistake-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .centipawn-loss {
+            font-size: 10px;
+            color: #ff9999;
+            background: #441111;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .mistake-type {
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .mistake-item.blunder .mistake-type {
+            color: #ff6666;
+        }
+
+        .mistake-item.mistake .mistake-type {
+            color: #ffaa66;
+        }
+
+        .move-number {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .mistake-content {
+            font-size: 14px;
+        }
+
+        .player-move, .better-move {
+            margin: 4px 0;
+        }
+
+        .label {
+            color: #ccc;
+            margin-right: 8px;
+        }
+
+        .move {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #fff;
+        }
+
+        .mistake-explanation {
+            margin-top: 8px;
+            font-style: italic;
+            color: #bbb;
+            font-size: 13px;
+        }
+
+        .mistake-summary {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .summary-stats .stat {
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .no-mistakes {
+            text-align: center;
+            color: #4CAF50;
+            font-size: 16px;
+            padding: 20px;
+        }
+
+        /* AI Analysis Styles */
+        .ai-analysis {
+            margin-top: 8px;
+            padding: 8px;
+            background: linear-gradient(135deg, #1a2a3a 0%, #2a3a4a 100%);
+            border-radius: 6px;
+            border: 1px solid #4a6a8a;
+        }
+
+        .ai-analysis small {
+            color: #aaccff;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="game-section">
+            <div class="players-row">
+                <div class="top-bar">
+                    <div class="player-info">
+                        <div class="player-avatar">🤖</div>
+                        <div>
+                    <div class="sub-label">OPPONENT</div>
+                            <div>Chess Bot</div>
+                        </div>
+                    </div>
+                    <div class="sub-status">AI is thinking...</div>
+                </div>
+
+                <div class="status-bar" id="status">Game Started  Your Move</div>
+
+                <div class="top-bar">
+                    <div class="player-info">
+                        <div class="player-avatar">♔</div>
+                        <div>
+                            <div class="sub-label">YOU</div>
+                            <div>White</div>
+                        </div>
+                    </div>
+                    <div class="sub-status" id="playerStatus">To move</div>
+                </div>
+            </div>
+
+            <div class="board-wrapper small">
+                <div class="board" id="board"></div>
+            </div>
+
+        <div class="right-panel">
+            <div class="panel-section">
+                <div class="panel-title">Move History</div>
+                <div class="move-list" id="moveHistory"></div>
+            </div>
+
+            <div class="panel-section">
+                <div class="button-group">
+                    <button id="analyzeBtn" class="btn primary" onclick="analyzeGame()">📊 Analyze Game</button>
+                    <button class="btn" onclick="showMistakes()">❌ Show Mistakes</button>
+                </div>
+            </div>
+
+            <div id="analysisContainer">
+                <div class="panel-section">
+                    <div class="panel-title">Move Analysis</div>
+                    <div class="analysis-content">
+                        <div class="analysis-item">
+                            <span class="analysis-label">Quality:</span>
+                            <span class="analysis-value" id="move-quality">Analyzing...</span>
+                        </div>
+                        <div class="analysis-item">
+                            <span class="analysis-label">Centipawn Loss:</span>
+                            <span class="analysis-value" id="centipawn-loss">0cp</span>
+                        </div>
+                        <div class="analysis-item">
+                            <span class="analysis-label">Better Moves:</span>
+                            <span class="analysis-value" id="best-moves">None</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Difficulty Level</div>
+                <div class="elo-selector" id="eloSelector"></div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Board Size</div>
+                <div class="size-selector">
+                    <button class="size-btn active" onclick="changeBoardSize('small')">Small</button>
+                    <button class="size-btn" onclick="changeBoardSize('medium')">Medium</button>
+                    <button class="size-btn" onclick="changeBoardSize('large')">Large</button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Captured</div>
+                <div class="piece-container">
+                    <div class="piece-heading">Opponent's Pieces</div>
+                    <div class="captured-pieces" id="capturedBlack"></div>
+                </div>
+                <div>
+                    <div class="piece-heading">Your Pieces</div>
+                    <div class="captured-pieces" id="capturedWhite"></div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">Statistics</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Material</div>
+                        <div class="stat-value" id="material">Equal</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Moves</div>
+                        <div class="stat-value" id="moveCount">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Half Moves</div>
+                        <div class="stat-value" id="halfMoves">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Status</div>
+                        <div class="stat-value" id="gameStatus">Active</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="button-group">
+                    <button class="btn primary" onclick="resetGame()">New Game</button>
+                    <button class="btn" onclick="toggleAI()" id="aiBtn">AI: ON</button>
+                    <button class="btn" onclick="undoMove()">Undo Move</button>
+                    <button class="btn" onclick="swapPieceColors()">🔄 Swap Colors</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/stockfish.js@10.0.2/stockfish.js"></script>
+    <script src="chess.js"></script>
+</body>
+</html>
